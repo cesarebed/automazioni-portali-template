@@ -1,0 +1,51 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials.json
+tokens/
+
+# Dati personali clienti: record e allegati scaricati dalla fonte dati, catture, mai nel repo (L-004)
+runtime/
+tmp/
+downloads/
+*.pdf
+*.p7m
+# Eccezione: PDF di sola documentazione
+!docs/**/*.pdf
+
+# Immagini di firma (asset sensibili): mai nel repo
+signatures/
+assets/signatures/
+*firma*.png
+*firma*.jpg
+*firma*.jpeg
+
+# Python (eventuali venv di skill)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Runtime / log
+logs/
+*.log
+runs/
+
+# Output di cattura browser (screenshot/snapshot/html: dati reali)
+.playwright-mcp/
+
+# Config locale di Claude Code (permessi macchina-specifici)
+.claude/settings.local.json

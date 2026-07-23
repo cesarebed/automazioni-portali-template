@@ -1,0 +1,107 @@
+name: Guardia learnings
+
+# Protegge i learnings (comune data/learnings.md + i file per-portale data/learnings/*.md)
+# dalla CANCELLAZIONE di voci [L-nnn] da parte di chi non e' manutentore. Non impedisce le
+# aggiunte (i learnings restano a push libero) ne' lo SPOSTAMENTO di una voce tra file: la
+# rilevazione lavora sull'UNIONE degli id di tutti i file, quindi solo la sparizione di un
+# id dall'unione conta come cancellazione. Se un push rimuove una voce e l'autore non e' un
+# manutentore, ripristina i file com'erano prima e apre una issue. I manutentori possono
+# cancellare (dati sensibili/duplicati/archivio). Regola documentata in CLAUDE.md e
+# data/learnings.md.
+#
+# Nota: i push del GITHUB_TOKEN non ri-attivano i workflow, quindi il ripristino non crea
+# loop; in piu' il job salta esplicitamente l'attore bot.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/learnings.md'
+      - 'data/learnings/**'
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  guard:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rileva voci [L-nnn] rimosse
+        id: check
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          # Manutentori che POSSONO cancellare learnings: gli username GitHub della TUA
+          # azienda, separati da spazio. AGGIORNARE QUI quando si adotta il template.
+          MAINTAINERS: 'cesarebed'
+        run: |
+          set -euo pipefail
+          # push iniziale del branch (before tutti zero): niente da confrontare
+          if [[ "$BEFORE" =~ ^0+$ ]]; then
+            echo "violation=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Aggrega gli id [L-nnn] su TUTTI i file dei learnings (comune + per-portale) a un
+          # dato ref. Cosi' spostare una voce tra file NON e' una cancellazione (l'id resta
+          # nell'unione): solo la sparizione di un id dall'unione conta.
+          ids_at() {
+            local ref="$1"
+            {
+              git show "$ref:data/learnings.md" 2>/dev/null || true
+              for f in $(git ls-tree -r --name-only "$ref" -- data/learnings/ 2>/dev/null); do
+                git show "$ref:$f" 2>/dev/null || true
+              done
+            } | grep -oE '\[L-[0-9]+\]' | sort -u
+          }
+          ids_before=$(ids_at "$BEFORE")
+          ids_after=$(ids_at "$AFTER")
+          removed=$(comm -23 <(printf '%s\n' "$ids_before") <(printf '%s\n' "$ids_after") | grep -E '\[L-[0-9]+\]' || true)
+          if [[ -z "${removed//[[:space:]]/}" ]]; then
+            echo "Nessuna voce rimossa."
+            echo "violation=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          for m in $MAINTAINERS; do
+            if [[ "$ACTOR" == "$m" ]]; then
+              echo "Voci rimosse da manutentore @$ACTOR: consentito ($removed)."
+              echo "violation=false" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+          done
+          echo "VIOLAZIONE: @$ACTOR ha rimosso: $removed"
+          {
+            echo "violation=true"
+            echo "removed<<EOF"
+            echo "$removed"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Ripristina learnings e avvisa
+        if: steps.check.outputs.violation == 'true'
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          REMOVED: ${{ steps.check.outputs.removed }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Ripristina TUTTI i file dei learnings com'erano prima del push: cosi' non si perde
+          # nessuna voce. Aggiunte legittime nello stesso push vanno rifatte (senza cancellare),
+          # vedi issue. La cartella per-portale potrebbe non essere esistita a BEFORE: la si
+          # include nel checkout solo se c'era, per non far fallire il pathspec.
+          git checkout "$BEFORE" -- data/learnings.md
+          if git ls-tree -r --name-only "$BEFORE" -- data/learnings/ | grep -q .; then
+            git checkout "$BEFORE" -- data/learnings/
+          fi
+          msg=$(printf 'revert: ripristino learnings cancellati da @%s\n\nVoci rimosse e ripristinate: %s\nI learnings si sostituiscono citando la vecchia, non si cancellano.\nLa cancellazione spetta solo ai manutentori (dati sensibili/duplicati/archivio).' "$ACTOR" "$REMOVED")
+          git commit -m "$msg"
+          git push origin HEAD:main
+          body=$(printf 'Il push %s di @%s ha rimosso le voci: %s\n\nSono state ripristinate in automatico (revert dei file dei learnings, comune e per-portale, allo stato precedente). Se nello stesso push ci fosse stata una modifica legittima (voce nuova o ritiro citando la vecchia), va rifatta senza eliminare le voci esistenti. Solo i manutentori possono cancellare learnings, e solo per dati sensibili/duplicati/archivio.' "$AFTER" "$ACTOR" "$REMOVED")
+          gh issue create --title "Learnings ripristinati: cancellazione non consentita da @$ACTOR" --body "$body" || echo "issue non creata (permessi?), ripristino comunque effettuato"
