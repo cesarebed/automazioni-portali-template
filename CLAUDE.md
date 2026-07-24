@@ -1,104 +1,112 @@
-# Automazioni Portali — template
+# Portal automation template
 
-Template **Claude-native** per automatizzare la compilazione di pratiche su portali web
-a partire dai dati del gestionale/CRM dell'azienda. Nasce come estrazione anonimizzata
-di un sistema in produzione (pratiche compilate su portali istituzionali per un'azienda
-reale): architettura e regole sono collaudate sul campo, i contenuti specifici del
-business d'origine sono stati rimossi. Il repo parte **vergine**: nessuna fonte dati
-collegata, nessun portale mappato. Entrambi si aggiungono con onboarding guidati.
+Claude-native template for automating case filing on web portals, using the company's
+existing data source (CRM, ERP, internal API) as the source of truth. It is the
+anonymized extraction of a system running in production at a real company: the
+architecture and rules were validated there; business-specific content was removed.
+The repo starts empty: no data source connected, no portal mapped. Both are added
+through guided onboarding.
 
-## Come si usa (regola numero uno)
+## How this repo is used (rule number one)
 
-Quattro skill, due pubblici:
+Four skills, two audiences:
 
-- **`skills/assistente-pratiche`** — il front per l'**operatore**: ogni richiesta sulle
-  pratiche passa da qui, in linguaggio naturale ("avvia la pratica X per Mario Rossi",
-  "a che punto siamo"). La skill orchestra tutto e parla semplice, senza tecnicismi.
-  Non lanciare il bot a mano se non per sviluppo/diagnosi.
-- **`skills/setup`** — installazione guidata su una macchina nuova (strumenti,
-  dipendenze, `.env`, browser dedicato, verifica).
-- **`skills/onboarding-crm`** — collega la **fonte dati** dell'azienda: si scrive un
-  adapter (da `scripts/bot/lib/crm/adapters/_template.js`) contro l'API del gestionale,
-  in una sessione guidata col referente tecnico.
-- **`skills/onboarding-portale`** — insegna al sistema un **portale nuovo**: sessione
-  live supervisionata, cattura, spec, manifest campi, plugin deterministico.
+- **`skills/case-assistant`** - the front end for the **operator**: every request
+  about cases goes through it, in natural language ("start the X case for John
+  Smith", "where do we stand"). The skill orchestrates everything and speaks plain
+  language, no jargon. Do not run the bot by hand except for development or
+  diagnosis.
+- **`skills/setup`** - guided installation on a new machine (tools, dependencies,
+  `.env`, dedicated browser, final check).
+- **`skills/crm-onboarding`** - connects the company's **data source**: an adapter is
+  written against the system's API (starting from
+  `scripts/bot/lib/crm/adapters/_template.js`) in a guided session with the technical
+  contact.
+- **`skills/portal-onboarding`** - teaches the system a **new portal**: supervised
+  live session, capture, spec, field manifest, deterministic plugin.
 
-Sotto il cofano: `scripts/bot` (Playwright deterministico), Chrome dedicato via CDP
-(login 2FA persistente, `scripts/chrome-cdp/`), un adapter per la fonte dati
-(`scripts/bot/lib/crm/`), un plugin per portale (`scripts/bot/lib/portali/<id>/`).
+Under the hood: `scripts/bot` (deterministic Playwright), a dedicated Chrome over CDP
+(persistent 2FA login, `scripts/chrome-cdp/`), one adapter for the data source
+(`scripts/bot/lib/crm/`), one plugin per portal (`scripts/bot/lib/portals/<id>/`).
 
-## IL SISTEMA IMPARA — protocollo obbligatorio
+## THE SYSTEM LEARNS - mandatory protocol
 
-1. **`data/learnings.md`** — la base di conoscenza. Si LEGGE a inizio sessione, si
-   AGGIORNA ogni volta che si impara qualcosa. Voci `[L-nnn]` datate: si
-   **sostituiscono** citando la vecchia (che resta, marcata "superata"), non si
-   cancellano. Cancellazione solo dai manutentori (elencati in
-   `.github/workflows/guard-learnings.yml`) e solo per dati sensibili finiti dentro per
-   errore, duplicati o archivio; la guardia CI ripristina le rimozioni altrui.
-   Partizione: `data/learnings.md` tiene protocollo, regole trasversali e
-   infrastruttura condivisa; i gotcha di un portale stanno in
-   `data/learnings/<portale>.md`. Id `[L-nnn]` globali e unici sull'unione dei file.
-2. **`data/pratiche_ledger.json`** — lo stato di ogni pratica su ogni portale, tra le
-   sessioni. Se non e' nel ledger, non e' successo.
-3. **Incident**: quando un bot di portale si blocca, produce un record strutturato +
-   artefatti (screenshot, albero accessibilita', html) in `runtime/runs/`. Un incident
-   non risolto e' un debito: si diagnostica, si fixa (codice verificato sul portale
-   vivo, o regola nei learnings), si marca risolto, si committa.
+1. **`data/learnings.md`** - the knowledge base. READ it at session start, UPDATE it
+   every time something is learned. Entries are dated `[L-nnn]` ids: they get
+   **superseded** by a new entry citing the old one (which stays, marked
+   "superseded"); they are not deleted. Deletion is reserved to the maintainers
+   (listed in `.github/workflows/guard-learnings.yml`) and only for sensitive data
+   committed by mistake, duplicates, or archiving; the CI guard reverts deletions by
+   anyone else. Partitioning: `data/learnings.md` holds the protocol, cross-portal
+   rules, and shared infrastructure; portal-specific gotchas live in
+   `data/learnings/<portal>.md`. `[L-nnn]` ids are global and unique across the union
+   of files.
+2. **`data/case_ledger.json`** - the state of every case on every portal, across
+   sessions. If it is not in the ledger, it did not happen.
+3. **Incidents**: when a portal bot gets stuck, it produces a structured record plus
+   artifacts (screenshot, accessibility tree, html) in `runtime/runs/`. An unresolved
+   incident is debt: diagnose it, fix it (code verified on the live portal, or a rule
+   in the learnings), mark it resolved, commit.
 
-**Il git log e' la storia di cio' che il sistema ha imparato**: ogni fix/learning va
-committato con un messaggio che spiega il caso. Mai correggere senza committare.
+**The git log is the history of what the system has learned**: every fix and every
+learning is committed with a message that explains the case. Never fix without
+committing.
 
-## Push su `main` (convenzione)
+## Pushing to `main` (convention)
 
-Salvaguardia di **convenzione**, non vincolo tecnico. Chi opera si riconosce
-dall'identita' git della macchina (`git config user.name`/`user.email`):
+This is a convention, not a technical constraint. Who is operating is identified by
+the machine's git identity (`git config user.name` / `user.email`):
 
-- **I manutentori** (gli stessi elencati nella guardia CI): dopo ogni commit su `main`,
-  push diretto su `origin/main`, per qualsiasi file.
-- **Chiunque altro** (o identita' non confermabile): auto-push SOLO per commit che
-  toccano esclusivamente `data/learnings.md`, `data/learnings/` e
-  `data/pratiche_ledger.json`. Codice o mix: commit locale, niente push, si passa da PR.
+- **Maintainers** (the same ones listed in the CI guard): after every commit on
+  `main`, push directly to `origin/main`, for any file.
+- **Anyone else** (or if the identity cannot be confirmed): auto-push ONLY for
+  commits that touch exclusively `data/learnings.md`, `data/learnings/`, and
+  `data/case_ledger.json`. Code or mixed commits: commit locally, do not push,
+  explain that those changes go to `main` via PR.
 
-Vale solo per push diretti su `main` di questo repo. Force-push, reset, riscrittura
-storia: sempre da confermare. In caso di dubbio, non pushare (fail-safe).
+This applies only to direct pushes to `main` of this repo. Force-push, reset, history
+rewriting: always ask first. When in doubt, do not push (fail safe).
 
-## Regole ferree (non negoziabili)
+## Hard rules (non-negotiable)
 
-- **Mai indovinare** (L-002): dato mancante o illeggibile = segnala e fermati. Sempre,
-  su ogni portale. Le inconsistenze si gestiscono nel preflight, prima del browser.
-- **Inoltro** (L-006): un portale appena onboardato NON inoltra da solo. L'inoltro
-  automatico si sblocca per-portale solo quando la sua **salvaguardia di verifica**
-  (rileggere dal portale cio' che risulta compilato e confrontarlo con l'atteso) e'
-  stata definita nella spec, codificata nel plugin e validata su una pratica
-  supervisionata. Fino ad allora: il bot compila e si ferma, l'inoltro lo conferma un
-  umano per-pratica.
-- **Login 2FA** (L-001): lo fa l'operatore nel Chrome dedicato (profilo persistente,
-  `scripts/chrome-cdp/`). Claude non tenta mai login e non tocca credenziali.
-- **Dati personali** (L-004): documenti dei clienti in memoria durante il fill; su
-  disco solo in `runtime/` (gitignorato), da cancellare a pratica chiusa. Mai
-  committare dati di clienti, token, identificativi reali. Nel ledger solo
-  nome/identificativi pratica (dati gia' presenti nella fonte dati dell'azienda).
-- **Output per l'operatore**: linguaggio semplice, niente em-dash, niente tecnicismi
-  (contratto di output nella skill `assistente-pratiche`).
-- **Azioni critiche in cattura**: durante gli onboarding ogni azione irreversibile
-  (Salva, Genera, Invia, Elimina) e' gated a mano dal referente tecnico.
+- **Never guess** (L-002): a missing or unreadable value means report it and stop.
+  Always, on every portal. Inconsistencies are handled in preflight, before the
+  browser opens.
+- **Submission** (L-006): a freshly onboarded portal does NOT submit on its own.
+  Automatic submission is enabled per portal only after its **verification
+  safeguard** (re-reading what the portal reports as filled and comparing it to the
+  expected values) has been defined in the spec, coded in the plugin, and validated
+  on a supervised case. Until then the bot fills and stops; a human confirms each
+  submission.
+- **Login and 2FA** (L-001): done by the operator in the dedicated Chrome (persistent
+  profile, `scripts/chrome-cdp/`). Claude never attempts a login and never touches
+  credentials.
+- **Personal data** (L-004): client documents stay in memory during the fill; on disk
+  only in `runtime/` (gitignored), deleted when the case closes. Never commit client
+  data, tokens, or real identifiers. The ledger holds only names and case
+  identifiers, data already present in the company's data source.
+- **Output for the operator**: plain language, in the operator's own language, no em
+  dashes, no jargon (the output contract is in the `case-assistant` skill).
+- **Critical actions during capture**: during onboarding, every irreversible action
+  (Save, Generate, Send, Delete) is gated manually by the technical contact.
 
-## Documenti vivi
+## Living documents
 
-- `data/learnings.md` (+ `data/learnings/<portale>.md`) — conoscenza operativa
-- `data/pratiche_ledger.json` — stato pratiche
-- `data/manifests/<portale>.json` — mappatura campi fonte dati -> portale (fonte di
-  verita', prodotta dall'onboarding)
-- `docs/flow-<portale>-<flusso>.md` — la spec deterministica di ogni flusso onboardato,
-  passo-passo verificato: se un fix cambia il flusso, va aggiornata
+- `data/learnings.md` (+ `data/learnings/<portal>.md`) - operational knowledge
+- `data/case_ledger.json` - case state
+- `data/manifests/<portal>.json` - field map from data source to portal (source of
+  truth, produced by onboarding)
+- `docs/flow-<portal>-<flow>.md` - the deterministic step-by-step spec of each
+  onboarded flow, verified live: if a fix changes the flow, the spec changes in the
+  same commit
 
-## Setup nuova macchina
+## New machine setup
 
-Il percorso completo e guidato e' la skill `setup`. In sintesi:
+The complete guided path is the `setup` skill. In short:
 
-1. `cp .env.example .env` e compilare (adapter della fonte dati e sue credenziali,
+1. `cp .env.example .env` and fill it in (data-source adapter and its credentials,
    `CDP_URL`).
 2. `cd scripts/bot && npm install && npx playwright install chromium`
-3. Chrome dedicato: `scripts/chrome-cdp/launch-chrome-cdp.sh`, login sui portali una
-   volta.
-4. Verifica: `node scripts/bot/bot.js --check`
+3. Dedicated Chrome: `scripts/chrome-cdp/launch-chrome-cdp.sh`, log in to the portals
+   once.
+4. Check: `node scripts/bot/bot.js --check`

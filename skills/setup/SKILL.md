@@ -1,11 +1,11 @@
 ---
 name: setup
 description: |
-  Installazione guidata del sistema su una macchina nuova. Attivala quando un utente
-  chiede di installare, configurare o verificare il sistema ("installa il sistema",
-  "prepara questo computer", "il check e' rosso"). Sei tu, Claude, a eseguire i passi:
-  l'utente probabilmente non e' tecnico, parlagli in linguaggio semplice e digli
-  sempre cosa stai facendo e cosa ti serve da lui.
+  Guided installation of the system on a new machine. Use it when a user asks to
+  install, configure, or check the system ("install the system", "set up this
+  computer", "the check is red"). You, Claude, execute the steps: the user is
+  probably not technical, so speak plainly and always say what you are doing and
+  what you need from them.
 allowed_tools:
   - Read
   - Write
@@ -15,39 +15,39 @@ allowed_tools:
   - Glob
 ---
 
-# Setup — installazione guidata
+# Setup - guided installation
 
-Segui i passi in ordine, un blocco alla volta, verificando l'esito prima di
-proseguire. Regole mentre esegui:
+Follow the steps in order, one block at a time, checking the outcome before moving
+on. Rules while executing:
 
-- **Verifica prima di installare**: se uno strumento c'e' gia' (`git --version` ecc.),
-  non reinstallarlo, passa oltre.
-- **I segreti (credenziali, token) vanno SOLO nel file `.env` locale**: mai committati,
-  mai mostrati per intero a video, mai scritti altrove.
-- Non committare e non pushare nulla durante il setup.
+- **Check before installing**: if a tool is already there (`git --version` etc.), do
+  not reinstall it, move on.
+- **Secrets (credentials, tokens) go ONLY in the local `.env` file**: never
+  committed, never printed in full, never written anywhere else.
+- Do not commit or push anything during setup.
 
-## Passo 0 — Sistema operativo
+## Step 0 - Operating system
 
-Determina se sei su macOS o Windows e usa la variante giusta dei comandi. Se il repo
-non e' ancora clonato, clonalo prima (serve `gh auth login`, Passo 2) nella cartella
-base dell'utente (es. `~/Documents/Github`).
+Determine whether you are on macOS or Windows and use the right command variants
+from here on. If the repo is not cloned yet, clone it first (needs `gh auth login`,
+Step 2) into the user's base directory (e.g. `~/Documents/Github`).
 
-## Passo 1 — Strumenti di base
+## Step 1 - Base tools
 
-Verifica ed eventualmente installa **git, GitHub CLI (gh), Node.js LTS**.
+Check and, if missing, install **git, GitHub CLI (gh), Node.js LTS**.
 
-- macOS: `brew install git gh node` (se manca Homebrew: https://brew.sh)
+- macOS: `brew install git gh node` (if Homebrew is missing: https://brew.sh)
 - Windows (PowerShell): `winget install --id Git.Git -e`, `--id GitHub.cli -e`,
-  `--id OpenJS.NodeJS.LTS -e`; poi far riaprire il terminale (PATH).
+  `--id OpenJS.NodeJS.LTS -e`; then have the user reopen the terminal (PATH).
 
-Verifica: `git --version`, `gh --version`, `node --version` rispondono tutti.
+Check: `git --version`, `gh --version`, `node --version` all respond.
 
-## Passo 2 — Accesso GitHub (se serve)
+## Step 2 - GitHub access (if needed)
 
 `gh auth status || gh auth login` (GitHub.com -> HTTPS -> Login with a web browser).
-Spiega all'utente che si aprira' il browser e dovra' accedere con l'account aziendale.
+Explain that the browser will open and they should sign in with the company account.
 
-## Passo 3 — Dipendenze del progetto
+## Step 3 - Project dependencies
 
 ```bash
 cd scripts/bot
@@ -56,43 +56,44 @@ npx playwright install chromium
 cd ../..
 ```
 
-Nota: per l'automazione NON si usa il Google Chrome dell'utente ma il Chromium di
-Playwright, con profilo dedicato (L-003). Non proporre alternative.
+Note: automation does NOT use the user's Google Chrome but Playwright's Chromium,
+with a dedicated profile (L-003). Do not suggest alternatives.
 
-## Passo 4 — Configurazione `.env`
+## Step 4 - `.env` configuration
 
-Se l'azienda ha gia' un file `.env` pronto (lo fornisce chi amministra il sistema),
-fattelo indicare e copialo alla radice del repo col nome esatto `.env`; verifica i
-NOMI delle variabili senza mai stampare i valori, e fai eliminare la copia esterna.
-Altrimenti: `cp .env.example .env` e compila con l'utente:
+If the company already has a prepared `.env` file (provided by whoever administers
+the system), ask where it is and copy it to the repo root with the exact name
+`.env`; check the variable NAMES without ever printing the values, and have the
+external copy deleted. Otherwise: `cp .env.example .env` and fill it in with the
+user:
 
-- `CRM_ADAPTER`: l'id dell'adapter della fonte dati. Se e' vuoto e nessun adapter
-  esiste in `scripts/bot/lib/crm/adapters/`, la fonte dati non e' ancora collegata:
-  si fa dopo, con la skill `onboarding-crm` (non e' un errore del setup).
-- Le credenziali dell'adapter (se esiste): chiedile una alla volta, spiegando che
-  restano solo su questo computer.
-- `CDP_URL`: lascia `http://127.0.0.1:9222`.
+- `CRM_ADAPTER`: the data-source adapter id. If it is empty and no adapter exists in
+  `scripts/bot/lib/crm/adapters/`, the data source is not connected yet: that comes
+  later, with the `crm-onboarding` skill (not a setup error).
+- The adapter's credentials (if one exists): ask for them one at a time, explaining
+  that they stay on this computer only.
+- `CDP_URL`: leave `http://127.0.0.1:9222`.
 
-## Passo 5 — Chrome dedicato e login
+## Step 5 - Dedicated Chrome and login
 
-Lancia `scripts/chrome-cdp/launch-chrome-cdp.sh` (Windows: `.cmd`). Si apre una
-finestra Chromium con profilo separato. **Il login sui portali lo fa l'utente, mai tu**
-(L-001). Se nessun portale e' ancora onboardato, basta che la finestra si apra.
+Run `scripts/chrome-cdp/launch-chrome-cdp.sh` (Windows: `.cmd`). A Chromium window
+opens with a separate profile. **Portal logins are done by the user, never by you**
+(L-001). If no portal is onboarded yet, it is enough that the window opens.
 
-## Passo 6 — Verifica finale
+## Step 6 - Final check
 
 ```bash
 node scripts/bot/bot.js --check
 ```
 
-Leggi l'esito e spiegalo in parole semplici. Su un repo appena adottato e' normale
-che "fonte dati" sia KO (adapter da creare con `onboarding-crm`) e che i portali
-onboardati siano "nessuno": dillo come prossimo passo, non come errore.
+Read the result and explain it plainly. On a freshly adopted repo it is normal for
+"data source" to be KO (adapter still to be created with `crm-onboarding`) and for
+onboarded portals to be "none": present those as next steps, not as errors.
 
-## Passo 7 — Chiusura
+## Step 7 - Wrap up
 
-1. Riassumi cosa hai installato e cosa e' pronto.
-2. Spiega come si usa d'ora in poi: aprire Claude Code/Desktop nella cartella del
-   progetto e scrivere in linguaggio naturale (skill `assistente-pratiche`).
-3. Indica i due onboarding rimasti, nell'ordine: prima la fonte dati
-   (`onboarding-crm`), poi il primo portale (`onboarding-portale`).
+1. Summarize what you installed and what is ready.
+2. Explain how the system is used from now on: open Claude Code/Desktop in the
+   project directory and write in natural language (the `case-assistant` skill).
+3. Point out the two remaining onboardings, in order: first the data source
+   (`crm-onboarding`), then the first portal (`portal-onboarding`).

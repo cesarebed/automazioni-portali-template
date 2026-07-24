@@ -1,67 +1,65 @@
-# Learnings — base di conoscenza che cresce ad ogni pratica
+# Learnings - a knowledge base that grows with every case
 
-Questo file e' la **memoria operativa del sistema**: ogni blocco risolto, ogni caso non
-standard incontrato, ogni regola decisa dall'operatore finisce qui. La skill
-`assistente-pratiche` lo **legge a inizio sessione** e lo **aggiorna** (con commit)
-ogni volta che impara qualcosa. E' cosi' che il sistema migliora da solo: il codice
-gestisce i casi codificati, questo file gestisce il giudizio.
+This file is the system's **operational memory**: every resolved blocker, every
+non-standard case, every rule an operator states ends up here. The `case-assistant`
+skill **reads it at session start** and **updates it** (with a commit) every time
+something is learned. This is how the system improves: code handles the codified
+cases, this file handles the judgment.
 
-Formato di ogni voce: `[L-nnn]` id progressivo, data, **regola** in una riga, contesto,
-origine (chi l'ha decisa o come e' stata scoperta). Regola di default: le voci **si
-sostituiscono**, non si cancellano. Se una regola cambia, si aggiunge la voce nuova che
-la sostituisce citando la vecchia, e la vecchia resta marcata "superata" (il valore e'
-spesso la storia della correzione, non solo la regola attuale). La **cancellazione** e'
-un atto deliberato riservato ai manutentori, solo per: dati sensibili per errore,
-duplicati/spazzatura, archiviazione di voci superate. Nessuna cancellazione silenziosa
-da parte di altri: una guardia automatica la ripristina (su tutti i file dei learnings,
-comune e per-portale).
+Entry format: `[L-nnn]` progressive id, date, the **rule** in one line, context,
+origin (who decided it or how it was discovered). Default rule: entries get
+**superseded**, not deleted. When a rule changes, add a new entry that supersedes the
+old one and cites it; the old entry stays, marked "superseded" (the value is often
+the history of the correction, not just the current rule). **Deletion** is a
+deliberate act reserved to the maintainers, only for: sensitive data committed by
+mistake, duplicates, or archiving superseded entries. No silent deletions by anyone
+else: an automatic guard reverts them (across all learnings files, shared and
+per-portal).
 
-## Organizzazione (partizione per portale)
+## Organization (partitioned per portal)
 
-I learning sono divisi per **ambito**, cosi' chi lavora un portale carica solo cio' che
-gli serve senza il rumore degli altri. Gli id `[L-nnn]` restano **globali e unici** su
-tutti i file (un id vive in un file solo; i riferimenti "vedi L-nnn" valgono anche tra
-file).
+Learnings are split by **scope**, so whoever works on one portal loads only what they
+need without the noise of the others. `[L-nnn]` ids stay **global and unique** across
+all files (an id lives in one file only; "see L-nnn" references work across files).
 
-- **Questo file (`data/learnings.md`)** — il **comune**, sempre caricato: il protocollo
-  qui sopra, le **regole trasversali** (valgono per tutti i portali) e i learning
-  dell'**infrastruttura condivisa** (fonte dati, Chrome CDP, lettura documenti,
-  orchestratore).
-- **`data/learnings/<portale>.md`** — gotcha e regole specifici di un portale
-  onboardato. Il file nasce durante l'onboarding del portale.
+- **This file (`data/learnings.md`)** - the **shared** one, always loaded: the
+  protocol above, the **cross-portal rules**, and learnings about **shared
+  infrastructure** (data source, Chrome CDP, document reading, orchestration).
+- **`data/learnings/<portal>.md`** - gotchas and rules specific to one onboarded
+  portal. The file is created during that portal's onboarding.
 
-## Regole trasversali (valgono per tutti i portali)
+## Cross-portal rules
 
-Le voci qui sotto sono **ereditate dal sistema in produzione da cui questo template e'
-stato estratto**, dove sono state scoperte e verificate sul campo: sono infrastruttura
-o giudizio che vale per qualsiasi business e qualsiasi portale.
+The entries below are **inherited from the production system this template was
+extracted from**, where they were discovered and verified on real cases. They apply
+to any business and any portal.
 
-- **[L-001] Login sempre e solo umano.** L'operatore fa il login nel Chrome dedicato
-  (profilo persistente); Claude/bot non tenta mai login, non tocca credenziali, non
-  compila mai campi password. La sessione resta viva tra i run grazie al profilo.
-  Origine: regola ferrea del sistema d'origine, ereditata.
-- **[L-002] Mai indovinare.** Dato mancante, illeggibile o incoerente = segnala e
-  fermati. Nessun valore "plausibile" inventato, su nessun campo di nessun portale. Le
-  inconsistenze si gestiscono nel preflight, prima di aprire il browser. Origine:
-  regola ferrea del sistema d'origine, ereditata.
-- **[L-003] Per il CDP si usa il Chromium di Playwright, non il Google Chrome stock.**
-  Build recenti di Chrome mancano di comandi CDP che Playwright usa in
-  `connectOverCDP` (verificato sul campo: "Browser.setDownloadBehavior ... not
-  supported"). `launch-chrome-cdp.sh` lo gestisce da solo; override con `CHROME_BIN`
-  solo con un browser compatibile. Origine: incident risolto nel sistema d'origine,
-  ereditato.
-- **[L-004] Dati personali fuori dal repo.** Documenti e record dei clienti: in memoria
-  durante il fill quando possibile; su disco solo in `runtime/` (gitignorato) e si
-  cancellano a pratica chiusa. Mai committare dati di clienti o token; nel ledger solo
-  nome/identificativi pratica. Origine: regola ferrea del sistema d'origine, ereditata.
-- **[L-005] Attenzione alle bozze doppie.** Molti portali salvano bozze lato server:
-  ricompilare da zero senza controllare le bozze esistenti crea duplicati difficili da
-  sanare. Prima di compilare, verificare sempre se esiste gia' una bozza per quel
-  cliente e decidere (riprendi o elimina, con conferma). Origine: caso reale del
-  sistema d'origine, ereditato.
-- **[L-006] Inoltro automatico solo con salvaguardia codificata.** Un portale appena
-  onboardato non inoltra da solo: serve prima una verifica automatica pre-inoltro
-  specifica del portale (rileggere dal portale cio' che risulta compilato e
-  confrontarlo con l'atteso), definita nella spec, codificata nel plugin e validata su
-  una pratica supervisionata. Fino ad allora l'inoltro lo conferma un umano
-  per-pratica. Origine: decisione di progetto del sistema d'origine, ereditata.
+- **[L-001] Login is always done by a human.** The operator logs in inside the
+  dedicated Chrome (persistent profile); Claude and the bot never attempt a login,
+  never touch credentials, never fill a password field. The session survives between
+  runs thanks to the profile. Origin: hard rule of the original system, inherited.
+- **[L-002] Never guess.** A missing, unreadable, or inconsistent value means report
+  it and stop. No "plausible" invented value, on any field of any portal.
+  Inconsistencies are handled in preflight, before the browser opens. Origin: hard
+  rule of the original system, inherited.
+- **[L-003] Use Playwright's Chromium for CDP, not stock Google Chrome.** Recent
+  Chrome builds lack CDP commands that Playwright uses in `connectOverCDP` (observed
+  live: "Browser.setDownloadBehavior ... not supported"). `launch-chrome-cdp.sh`
+  handles this on its own; override with `CHROME_BIN` only with a compatible browser.
+  Origin: incident resolved in the original system, inherited.
+- **[L-004] Personal data stays out of the repo.** Client documents and records: in
+  memory during the fill when possible; on disk only in `runtime/` (gitignored),
+  deleted when the case closes. Never commit client data or tokens; the ledger holds
+  only names and case identifiers. Origin: hard rule of the original system,
+  inherited.
+- **[L-005] Watch out for duplicate drafts.** Many portals save drafts server-side:
+  refilling from scratch without checking for an existing draft creates duplicates
+  that are hard to clean up. Before filling, always check whether a draft already
+  exists for that client and decide (resume or delete, with confirmation). Origin:
+  real case in the original system, inherited.
+- **[L-006] Automatic submission only with a coded safeguard.** A freshly onboarded
+  portal does not submit on its own. It first needs a portal-specific pre-submission
+  check (re-reading what the portal reports as filled and comparing it to the
+  expected values), defined in the spec, coded in the plugin, and validated on a
+  supervised case. Until then a human confirms each submission. Origin: design
+  decision of the original system, inherited.

@@ -1,7 +1,7 @@
-// Aggancio al Chrome dedicato via CDP (scripts/chrome-cdp/launch-chrome-cdp.sh).
-// Il bot NON apre mai un browser suo: si attacca al profilo persistente dove
-// l'operatore ha gia' fatto il login dei portali (L-001). Vedi L-003 sul perche'
-// serve il Chromium di Playwright e non il Chrome stock.
+// Attaches to the dedicated Chrome over CDP (scripts/chrome-cdp/launch-chrome-cdp.sh).
+// The bot NEVER launches its own browser: it attaches to the persistent profile where
+// the operator has already logged in to the portals (L-001). See L-003 on why this
+// needs Playwright's Chromium rather than stock Chrome.
 
 import { chromium } from "playwright";
 
@@ -12,8 +12,8 @@ export async function connectCdp(env) {
     browser = await chromium.connectOverCDP(url);
   } catch (e) {
     throw new Error(
-      `Chrome CDP non raggiungibile su ${url}. Avvia prima scripts/chrome-cdp/launch-chrome-cdp.sh ` +
-      `(errore: ${e.message})`
+      `Chrome CDP not reachable at ${url}. Start scripts/chrome-cdp/launch-chrome-cdp.sh first ` +
+      `(error: ${e.message})`
     );
   }
   const context = browser.contexts()[0] || (await browser.newContext());

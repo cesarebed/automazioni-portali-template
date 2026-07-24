@@ -1,25 +1,25 @@
 #!/usr/bin/env node
-// Bot generico multi-portale. Punto di ingresso unico:
+// Generic multi-portal bot. Single entry point:
 //
 //   node scripts/bot/bot.js --check
-//       Diagnosi ambiente: .env, fonte dati (adapter CRM), Chrome CDP. Da lanciare
-//       dopo il setup di una macchina nuova e come primo passo di ogni diagnosi.
+//       Environment diagnostics: .env, data source (CRM adapter), Chrome CDP. Run it
+//       after setting up a new machine and as the first step of any diagnosis.
 //
-//   node scripts/bot/bot.js "<cliente | id>" --portale <id> [--flusso <id>] [--dry-run] [--send]
-//       Lavora una pratica sul portale indicato. --dry-run: compila senza salvare
-//       nulla. --send: inoltra a fine compilazione, MA solo se la verifica del plugin
-//       e' ok e il portale ha inoltroAutomatico=true (L-006); altrimenti si ferma prima.
+//   node scripts/bot/bot.js "<client | id>" --portal <id> [--flow <id>] [--dry-run] [--send]
+//       Works a case on the given portal. --dry-run: fill without saving anything.
+//       --send: submit after filling, BUT only if the plugin's verify passes and the
+//       portal has autoSubmit=true (L-006); otherwise it stops before.
 //
-// Il bot e' il braccio: il cervello (routing dal linguaggio naturale, ledger,
-// learnings, output per l'operatore) sta nella skill assistente-pratiche. Non
-// lanciarlo a mano se non per sviluppo/diagnosi.
+// The bot is the arm. The brain (natural-language routing, ledger, learnings, operator
+// output) lives in the case-assistant skill. Do not run the bot by hand except for
+// development or diagnosis.
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadEnv, REPO_ROOT } from "./lib/env.js";
 import { getCrm } from "./lib/crm/index.js";
 import { connectCdp } from "./lib/cdp.js";
-import { getPortale, listPortali } from "./lib/portali/index.js";
+import { getPortal, listPortals } from "./lib/portals/index.js";
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
@@ -29,113 +29,113 @@ const opt = (name) => {
 };
 
 function usage() {
-  console.log(`Uso:
+  console.log(`Usage:
   node scripts/bot/bot.js --check
-  node scripts/bot/bot.js "<cliente | id>" --portale <id> [--flusso <id>] [--dry-run] [--send]
+  node scripts/bot/bot.js "<client | id>" --portal <id> [--flow <id>] [--dry-run] [--send]
 
-Portali onboardati: ${listPortali().map((m) => m.id).join(", ") || "(nessuno: vedi skill onboarding-portale)"}`);
+Onboarded portals: ${listPortals().map((m) => m.id).join(", ") || "(none: see the portal-onboarding skill)"}`);
 }
 
 async function check() {
   const env = loadEnv();
   let ok = true;
-  const riga = (esito, msg) => {
-    if (!esito) ok = false;
-    console.log(`${esito ? "OK " : "KO "} ${msg}`);
+  const row = (passed, msg) => {
+    if (!passed) ok = false;
+    console.log(`${passed ? "OK " : "KO "} ${msg}`);
   };
 
-  riga(existsSync(join(REPO_ROOT, ".env")), ".env presente (altrimenti: cp .env.example .env)");
+  row(existsSync(join(REPO_ROOT, ".env")), ".env present (otherwise: cp .env.example .env)");
 
   try {
     const crm = getCrm(env);
-    const c = crm.check ? await crm.check() : { ok: true, dettaglio: "adapter senza check()" };
-    riga(c.ok, `fonte dati (${env.CRM_ADAPTER}): ${c.dettaglio}`);
+    const c = crm.check ? await crm.check() : { ok: true, detail: "adapter has no check()" };
+    row(c.ok, `data source (${env.CRM_ADAPTER}): ${c.detail}`);
   } catch (e) {
-    riga(false, `fonte dati: ${e.message}`);
+    row(false, `data source: ${e.message}`);
   }
 
   const cdpUrl = env.CDP_URL || "http://127.0.0.1:9222";
   try {
     const r = await fetch(`${cdpUrl}/json/version`, { signal: AbortSignal.timeout(2000) });
     const v = await r.json();
-    riga(r.ok, `Chrome CDP attivo su ${cdpUrl} (${v.Browser || "?"})`);
+    row(r.ok, `Chrome CDP up at ${cdpUrl} (${v.Browser || "?"})`);
   } catch {
-    riga(false, `Chrome CDP non raggiungibile su ${cdpUrl} (avvia scripts/chrome-cdp/launch-chrome-cdp.sh)`);
+    row(false, `Chrome CDP not reachable at ${cdpUrl} (start scripts/chrome-cdp/launch-chrome-cdp.sh)`);
   }
 
-  const portali = listPortali();
-  console.log(`--  portali onboardati: ${portali.length ? portali.map((m) => m.id).join(", ") : "nessuno (si parte con la skill onboarding-portale)"}`);
+  const portals = listPortals();
+  console.log(`--  onboarded portals: ${portals.length ? portals.map((m) => m.id).join(", ") : "none (start with the portal-onboarding skill)"}`);
   process.exit(ok ? 0 : 1);
 }
 
 async function run() {
-  const cliente = args.find((a) => !a.startsWith("--") && a !== opt("--portale") && a !== opt("--flusso"));
-  const portaleId = opt("--portale");
-  if (!cliente || !portaleId) {
+  const client = args.find((a) => !a.startsWith("--") && a !== opt("--portal") && a !== opt("--flow"));
+  const portalId = opt("--portal");
+  if (!client || !portalId) {
     usage();
     process.exit(1);
   }
 
-  const portale = getPortale(portaleId); // lancia con messaggio chiaro se sconosciuto
+  const portal = getPortal(portalId); // throws with a clear message if unknown
   const env = loadEnv();
   const crm = getCrm(env);
 
-  const manifestPath = join(REPO_ROOT, "data", "manifests", `${portaleId}.json`);
+  const manifestPath = join(REPO_ROOT, "data", "manifests", `${portalId}.json`);
   const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : null;
   if (!manifest) {
-    console.error(`Manifest mancante: data/manifests/${portaleId}.json (si produce in onboarding).`);
+    console.error(`Missing manifest: data/manifests/${portalId}.json (produced during onboarding).`);
     process.exit(2);
   }
 
-  const trovati = await crm.findRecord(cliente);
-  if (trovati.length === 0) {
-    console.error(`Nessun cliente trovato nella fonte dati per "${cliente}".`);
+  const found = await crm.findRecord(client);
+  if (found.length === 0) {
+    console.error(`No client found in the data source for "${client}".`);
     process.exit(2);
   }
-  if (trovati.length > 1) {
-    console.error(`Piu' clienti trovati per "${cliente}": ${trovati.map((t) => t.label).join("; ")}. Disambigua con un identificativo esatto.`);
+  if (found.length > 1) {
+    console.error(`Multiple clients found for "${client}": ${found.map((t) => t.label).join("; ")}. Disambiguate with an exact identifier.`);
     process.exit(2);
   }
-  const fields = manifest.campi.filter((c) => c.fonte === "crm").map((c) => c.campo_crm);
-  const record = await crm.fetchRecord(trovati[0].id, [...new Set(fields)]);
+  const fields = manifest.fields.filter((f) => f.source === "crm").map((f) => f.crm_field);
+  const record = await crm.fetchRecord(found[0].id, [...new Set(fields)]);
 
-  // Preflight: si apre il browser solo se i DATI sono a posto (L-002).
-  const pf = await portale.preflight(record, manifest);
+  // Preflight: the browser opens only if the DATA is in order (L-002).
+  const pf = await portal.preflight(record, manifest);
   if (!pf.ok) {
-    console.error(`Preflight KO per ${trovati[0].label}:`);
-    for (const m of pf.mancanti) console.error(`  MANCA: ${m}`);
-    for (const n of pf.note) console.error(`  NOTA: ${n}`);
+    console.error(`Preflight failed for ${found[0].label}:`);
+    for (const m of pf.missing) console.error(`  MISSING: ${m}`);
+    for (const n of pf.notes) console.error(`  NOTE: ${n}`);
     process.exit(2);
   }
 
   const wanted = Object.fromEntries(
-    (manifest.documenti_richiesti || []).map((d) => [d.chiave, new RegExp(d.match, "i")])
+    (manifest.required_documents || []).map((d) => [d.key, new RegExp(d.match, "i")])
   );
-  const docs = await crm.pickAttachments(trovati[0].id, wanted);
+  const docs = await crm.pickAttachments(found[0].id, wanted);
 
   const { browser, page } = await connectCdp(env);
   const ctx = { page, env, crm, record, docs, manifest, dry: flag("--dry-run") };
   try {
-    await portale.compila(ctx);
+    await portal.fill(ctx);
     if (ctx.dry) {
-      console.log("Dry-run: compilazione simulata completata, nessun salvataggio.");
+      console.log("Dry run: simulated fill completed, nothing saved.");
       return;
     }
-    const v = await portale.verifica(ctx);
+    const v = await portal.verify(ctx);
     if (!v.ok) {
-      console.error(`Verifica KO: ${v.dettaglio}. Non si inoltra.`);
+      console.error(`Verify failed: ${v.detail}. Not submitting.`);
       process.exit(3);
     }
-    if (flag("--send") && portale.meta.inoltroAutomatico) {
-      await portale.inoltra(ctx);
-      await portale.writeback(ctx);
-      console.log("Pratica inoltrata e writeback sulla fonte dati fatto.");
+    if (flag("--send") && portal.meta.autoSubmit) {
+      await portal.submit(ctx);
+      await portal.writeback(ctx);
+      console.log("Case submitted and data-source writeback done.");
     } else {
-      console.log("Compilazione ok e verificata. Inoltro NON automatico per questo portale: serve conferma umana (L-006).");
+      console.log("Fill completed and verified. Submission is NOT automatic for this portal: a human must confirm (L-006).");
     }
   } finally {
-    // Il browser NON si chiude: e' il Chrome dedicato dell'operatore (sessioni vive).
-    // Si stacca solo la connessione CDP.
+    // The browser is NOT closed: it is the operator's dedicated Chrome (live
+    // sessions). Only the CDP connection is dropped.
     await browser.close().catch(() => {});
   }
 }

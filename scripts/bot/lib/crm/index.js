@@ -1,23 +1,23 @@
-// Registro degli adapter della fonte dati (CRM/gestionale) + contratto. Il bot parla
-// con la fonte dati SOLO attraverso questa interfaccia: collegare un gestionale nuovo
-// = scrivere un adapter (skill onboarding-crm, partendo da adapters/_template.js),
-// senza toccare il resto del sistema.
+// Registry of data-source adapters (CRM/ERP/internal API) + contract. The bot talks
+// to the data source ONLY through this interface: connecting a new system means
+// writing an adapter (crm-onboarding skill, starting from adapters/_template.js),
+// without touching the rest.
 //
-// Contratto minimo di un adapter (vedi adapters/_template.js per il dettaglio):
-//   findRecord(identifier)            -> [{id, label}]      ricerca cliente (nome o id)
-//   fetchRecord(id, campi?)           -> {campo: valore}    fetch dei campi richiesti
-//   fetchRecordFull(id)               -> {campo: valore}    record completo (onboarding)
-//   listFields()                      -> [{nome, label}]    metadata (proposte mappature)
-//   listAttachments(id)               -> [{id, nome, size}]
-//   downloadAttachment(id, attId)     -> Buffer             in memoria, mai su disco (L-004)
-//   pickAttachments(id, {chiave: re}) -> {chiave: {nome, buffer} | null}
-//   updateRecord(id, campi)                                 writeback (idempotente)
-//   uploadAttachment(id, nome, buffer, mime?)
-//   hasAttachmentNamed(id, nome)      -> bool               anti-doppioni al retry
-//   check()                           -> {ok, dettaglio}    per bot --check
+// Minimum adapter contract (see adapters/_template.js for details):
+//   findRecord(identifier)            -> [{id, label}]     client search (name or id)
+//   fetchRecord(id, fields?)          -> {field: value}    fetch the requested fields
+//   fetchRecordFull(id)               -> {field: value}    full record (onboarding)
+//   listFields()                      -> [{name, label}]   metadata (mapping proposals)
+//   listAttachments(id)               -> [{id, name, size}]
+//   downloadAttachment(id, attId)     -> Buffer            in memory, never on disk (L-004)
+//   pickAttachments(id, {key: regex}) -> {key: {name, buffer} | null}
+//   updateRecord(id, fields)                               writeback (idempotent)
+//   uploadAttachment(id, name, buffer, mime?)
+//   hasAttachmentNamed(id, name)      -> bool              duplicate guard on retries
+//   check()                           -> {ok, detail}      for bot --check
 
 const ADAPTERS = {
-  // [miocrm.id]: MioCrmAdapter,   <- cosi', dopo l'onboarding della fonte dati
+  // [mycrm.id]: MyCrmAdapter,   <- like this, after data-source onboarding
 };
 
 export function listAdapters() {
@@ -28,18 +28,18 @@ export function getCrm(env) {
   const id = env.CRM_ADAPTER;
   if (!id) {
     throw new Error(
-      "Nessuna fonte dati configurata (CRM_ADAPTER vuoto nel .env). " +
-      "Si collega con la skill onboarding-crm."
+      "No data source configured (CRM_ADAPTER is empty in .env). " +
+      "Connect one with the crm-onboarding skill."
     );
   }
   const Adapter = ADAPTERS[id];
   if (!Adapter) {
-    const noti = listAdapters();
+    const known = listAdapters();
     throw new Error(
-      noti.length
-        ? `Adapter sconosciuto: "${id}". Registrati: ${noti.join(", ")}`
-        : `Adapter "${id}" non registrato. Si crea con la skill onboarding-crm ` +
-          `(da adapters/_template.js) e si registra in lib/crm/index.js.`
+      known.length
+        ? `Unknown adapter: "${id}". Registered: ${known.join(", ")}`
+        : `Adapter "${id}" is not registered. Create it with the crm-onboarding skill ` +
+          `(from adapters/_template.js) and register it in lib/crm/index.js.`
     );
   }
   return new Adapter(env);

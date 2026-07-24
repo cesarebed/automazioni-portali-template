@@ -1,6 +1,6 @@
 # Docs
 
-Le spec deterministiche dei flussi onboardati vivono qui, una per flusso:
-`flow-<portale>-<flusso>.md`. Le produce la skill `onboarding-portale` a partire dal
-file di cattura; sono documenti vivi, gemelli del codice del plugin: se un fix cambia
-il flusso, la spec si aggiorna nello stesso commit.
+The deterministic specs of onboarded flows live here, one per flow:
+`flow-<portal>-<flow>.md`. They are produced by the `portal-onboarding` skill from
+the capture file. They are living documents, twins of the plugin code: if a fix
+changes the flow, the spec changes in the same commit.

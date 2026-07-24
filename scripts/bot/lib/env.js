@@ -1,5 +1,5 @@
-// Lettura del .env alla radice del repo (piu' le variabili d'ambiente del processo).
-// I segreti vivono SOLO qui: mai committati, mai loggati.
+// Reads .env at the repo root (plus the process environment). Secrets live ONLY
+// there: never committed, never logged.
 
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";

@@ -1,9 +1,8 @@
-// fetch con retry mirato, per gli adapter della fonte dati. Politica collaudata in
-// produzione: ritenta sui BLIP DI RETE (errori lanciati: la richiesta non e' andata a
-// segno, quindi ripeterla e' sicuro anche per le scritture) e sulle risposte
-// transitorie 429/5xx SOLO per le GET (idempotenti). Su una scrittura che ha gia'
-// ricevuto una risposta 5xx NON si ritenta ciecamente: potrebbe essere andata a buon
-// fine lato server. Backoff esponenziale ~0.6s, 1.2s, 2.4s.
+// fetch with targeted retries, for data-source adapters. Policy validated in
+// production: retry on NETWORK BLIPS (thrown errors: the request never landed, so
+// repeating it is safe even for writes) and on transient 429/5xx responses ONLY for
+// GETs (idempotent). A write that already got a 5xx response is NOT retried blindly:
+// it may have succeeded server-side. Exponential backoff ~0.6s, 1.2s, 2.4s.
 
 export async function fetchWithRetry(url, opts = {}) {
   const isGet = (opts.method || "GET").toUpperCase() === "GET";

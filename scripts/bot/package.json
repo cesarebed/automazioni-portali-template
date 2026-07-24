@@ -1,9 +1,9 @@
 {
-  "name": "portali-bot",
+  "name": "portal-bot",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Bot generico multi-portale: compila pratiche su portali web dai dati del gestionale (Playwright)",
+  "description": "Generic multi-portal bot: fills cases on web portals from the company's data source (Playwright)",
   "scripts": {
     "check": "node bot.js --check"
   },

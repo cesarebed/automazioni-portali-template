@@ -1,88 +1,87 @@
-# Automazioni Portali — template
+# Portal automation template
 
-Un template **Claude-native** per costruire, senza scrivere un gestionale ne' un
-server, un sistema che **compila pratiche su portali web al posto tuo**, prendendo
-dati e documenti dalla fonte dati che l'azienda gia' usa (CRM, gestionale, API
-interna). Pensato per qualsiasi business che ricopia a mano gli stessi dati su siti
-istituzionali, di fornitori o di enti: pratiche edilizie, energetiche, assicurative,
-richieste di contributi, portali della pubblica amministrazione.
+A Claude-native template for automating form-filling on web portals. It reads client
+data and documents from the data source your company already has (a CRM, an ERP, an
+internal API) and fills in cases on external websites: government portals, supplier
+sites, grant applications, insurance filings. Anywhere someone currently retypes the
+same data by hand.
 
-E' l'estrazione anonimizzata di un sistema in produzione presso un'azienda reale:
-l'architettura, le salvaguardie e il protocollo di apprendimento sono collaudati su
-pratiche vere; i contenuti specifici di quel business sono stati rimossi. Il repo
-parte **vergine**: si adatta al tuo business con due sessioni di onboarding guidate.
+This is the anonymized extraction of a system that runs in production at a real
+company. The architecture, the safeguards, and the learning protocol come from that
+system; everything specific to that business has been removed. The repo starts empty
+on purpose: no data source connected, no portal mapped. Both get added through guided
+onboarding sessions.
 
-## L'idea in tre righe
+## How it works
 
-1. Un **portale si insegna una volta**: una sessione guidata sul sito vero, in cui una
-   persona guida e Claude esegue, cattura e codifica ogni campo. Il risultato e' una
-   procedura deterministica (niente improvvisazione a runtime).
-2. Da li' in poi le pratiche si avviano **con una frase** ("avvia la pratica X per
-   Mario Rossi"): il sistema legge i dati dalla fonte aziendale, controlla che ci sia
-   tutto PRIMA di aprire il browser, compila, verifica e aggiorna i registri.
-3. Ogni intoppo risolto e ogni regola data dall'operatore vengono **scritti e
-   versionati**: il sistema migliora ad ogni pratica e la conoscenza non vive nella
-   testa di una persona sola.
+1. A portal is taught once. In a live session on the real site, a person drives and
+   Claude executes, records every field, and codifies the procedure. The output is
+   deterministic: no improvisation at runtime.
+2. From then on, cases start with one sentence ("start the X case for John Smith").
+   The system reads data from your source, checks that everything is present before
+   opening a browser, fills the portal, verifies the result, and updates its records.
+3. Every resolved failure and every rule an operator states gets written down and
+   committed. The knowledge lives in the repo, not in one person's head.
 
-## Le salvaguardie (il motivo per cui ci si puo' fidare)
+## Safeguards
 
-- **Mai indovinare**: dato mancante o incoerente = il sistema si ferma e chiede, prima
-  di toccare il portale.
-- **Inoltro con doppia rete**: un portale appena configurato non invia mai da solo;
-  l'invio automatico si sblocca solo quando il controllo di verifica di quel portale
-  (rileggere dal sito cio' che risulta compilato) e' stato codificato e validato.
-- **Login sempre umano**: credenziali e 2FA restano all'operatore, in un browser
-  dedicato con sessione persistente. Il sistema non vede mai una password.
-- **Dati personali fuori dal repo**: documenti in memoria o in cartelle gitignorate,
-  puliti a pratica chiusa.
+- Never guess. A missing or inconsistent value stops the run before the browser
+  opens, and the operator is told exactly what is missing.
+- No unattended submission on new portals. Automatic submission is enabled per portal
+  only after its verification check (re-reading the portal's own state and comparing
+  it to the expected result) has been coded and validated on a supervised case.
+- Login stays human. Credentials and 2FA belong to the operator, in a dedicated
+  browser with a persistent session. The system never sees a password.
+- Client data stays out of the repo. Documents are held in memory or in gitignored
+  directories, and deleted when a case closes.
 
-## Com'e' fatto
+## Architecture
 
 ```
-Operatore (linguaggio naturale, dentro Claude Code)
- └─ skill assistente-pratiche ........ front conversazionale
-     └─ scripts/bot (Node) ........... bot Playwright DETERMINISTICO
-         ├─ bot.js ................... CLI: --check (diagnosi) + run per portale
-         ├─ lib/crm/ ................. contratto fonte dati + adapter per gestionale
-         │    └─ adapters/_template.js  scheletro: si implementa per il TUO CRM
-         ├─ lib/cdp.js ............... aggancio al Chrome dedicato via CDP
-         └─ lib/portali/<id>/ ........ UN PORTALE = UNA CARTELLA (plugin):
-              preflight (solo dati) · compila · verifica · inoltra · writeback
-              (_template/ e' lo scheletro da copiare per ogni portale nuovo)
+Operator (natural language, inside Claude Code)
+ └─ case-assistant skill ............ conversational front end
+     └─ scripts/bot (Node) .......... deterministic Playwright bot
+         ├─ bot.js .................. CLI: --check (diagnostics) + per-portal runs
+         ├─ lib/crm/ ................ data-source contract + pluggable adapters
+         │    └─ adapters/_template.js  skeleton: implement it for YOUR system
+         ├─ lib/cdp.js .............. attaches to the dedicated Chrome over CDP
+         └─ lib/portals/<id>/ ....... ONE PORTAL = ONE DIRECTORY (plugin):
+              preflight (data only) · fill · verify · submit · writeback
+              (_template/ is the skeleton you copy for each new portal)
 data/
- ├─ learnings.md .................... conoscenza operativa versionata (protocollo [L-nnn])
- ├─ manifests/<portale>.json ........ mappa campi: per ogni campo del portale, la fonte
- └─ pratiche_ledger.json ............ stato di ogni pratica tra le sessioni
-skills/ ............................. setup, onboarding-crm, onboarding-portale,
-                                      assistente-pratiche
+ ├─ learnings.md ................... versioned operational knowledge ([L-nnn] protocol)
+ ├─ manifests/<portal>.json ........ field map: where each portal field comes from
+ └─ case_ledger.json ............... state of every case across sessions
+skills/ ............................ setup, crm-onboarding, portal-onboarding,
+                                     case-assistant
 ```
 
-Tutto gira sulla macchina dell'operatore dentro Claude Code/Desktop: nessun server,
-nessun webhook, nessun dato che lascia l'azienda.
+Everything runs on the operator's machine inside Claude Code or Claude Desktop. There
+is no server, no webhook, and no data leaves the company.
 
-## Come si parte
+## Getting started
 
-1. **Setup** — apri il repo in Claude Code e chiedi "installa il sistema": la skill
-   `setup` guida strumenti, dipendenze, `.env` e verifica (`bot.js --check`).
-2. **Collega la fonte dati** — "colleghiamo il nostro CRM": la skill `onboarding-crm`
-   costruisce con te l'adapter contro l'API del tuo gestionale (ricerca clienti,
-   lettura record e allegati, writeback).
-3. **Insegna il primo portale** — "voglio automatizzare il sito X": la skill
-   `onboarding-portale` organizza la sessione live sul portale vero con una pratica
-   reale; a valle il portale e' un plugin e le pratiche si avviano con una frase.
+1. Setup. Open the repo in Claude Code and ask it to install the system. The `setup`
+   skill walks through tools, dependencies, `.env`, and the final check
+   (`bot.js --check`).
+2. Connect your data source. Ask to connect your CRM. The `crm-onboarding` skill
+   builds the adapter against your system's API with you: client search, record and
+   attachment reads, writeback.
+3. Teach the first portal. Ask to automate site X. The `portal-onboarding` skill runs
+   the live capture session on the real portal with a real case; afterwards the portal
+   is a plugin and cases start with one sentence.
 
-Tempi realistici: setup in mezz'ora; adapter fonte dati da mezza giornata in su (dipende
-dall'API); un portale = una sessione live di qualche ora piu' un giorno di
-consolidamento.
+Rough effort: setup takes half an hour. The data-source adapter takes half a day or
+more, depending on the API. A portal takes one live session of a few hours plus a day
+of consolidation.
 
-## Il sistema impara (ed e' questa la differenza)
+## The learning protocol
 
-`data/learnings.md` e' la memoria operativa: ogni blocco risolto, ogni regola
-dell'operatore, ogni caso strano diventa una voce `[L-nnn]` datata e committata. Le
-voci si sostituiscono citando la vecchia, non si cancellano (una guardia CI ripristina
-le cancellazioni non autorizzate): il valore e' spesso la storia della correzione, non
-solo la regola attuale. Il template nasce gia' con le regole trasversali ereditate dal
-sistema d'origine (L-001..L-006).
+`data/learnings.md` is the system's operational memory. Every resolved blocker, every
+operator rule, and every odd case becomes a dated `[L-nnn]` entry, committed to git.
+Entries get superseded by new entries that cite the old one; they are not deleted. A
+CI job reverts deletions made by anyone who is not a maintainer, because a deleted
+learning usually costs a repeated failure. The template ships with the six
+cross-portal rules inherited from the original system (L-001..L-006).
 
-Le regole complete di funzionamento sono in [CLAUDE.md](CLAUDE.md), che e' anche il
-"sistema operativo" letto da Claude in ogni sessione.
+Operating rules for Claude sessions are in [CLAUDE.md](CLAUDE.md).

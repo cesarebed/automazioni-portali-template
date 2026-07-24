@@ -1,34 +1,34 @@
-# Manifest campi per portale
+# Per-portal field manifests
 
-Un file `<portale>.json` per portale onboardato: la **fonte di verita'** della
-mappatura tra i campi che il portale chiede e da dove si prendono. Prodotto dalla
-skill `onboarding-portale` (le mappature proposte in cattura e confermate dal
-referente), letto dal preflight e dal filler del plugin.
+One `<portal>.json` file per onboarded portal: the **source of truth** for the
+mapping between the fields the portal asks for and where each value comes from.
+Produced by the `portal-onboarding` skill (mappings proposed during capture and
+confirmed by the technical contact), read by the plugin's preflight and filler.
 
-Struttura consigliata:
+Suggested structure:
 
 ```json
 {
-  "portale": "<id>",
-  "campi": [
+  "portal": "<id>",
+  "fields": [
     {
-      "campo_portale": "Etichetta esatta a video",
-      "fonte": "crm | documento | fisso | manuale",
-      "campo_crm": "nome del campo nella fonte dati (se fonte=crm)",
-      "valore": "valore fisso (se fonte=fisso)",
-      "documento": "quale allegato e cosa leggerci (se fonte=documento)",
-      "obbligatorio": true,
-      "note": "gotcha, formato atteso, regole di calcolo"
+      "portal_field": "Exact on-screen label",
+      "source": "crm | document | fixed | manual",
+      "crm_field": "field name in the data source (if source=crm)",
+      "value": "fixed value (if source=fixed)",
+      "document": "which attachment and what to read from it (if source=document)",
+      "required": true,
+      "notes": "gotchas, expected format, calculation rules"
     }
   ],
-  "documenti_richiesti": [
-    { "chiave": "identita", "match": "regex sul nome allegato nella fonte dati", "note": "" }
+  "required_documents": [
+    { "key": "identity", "match": "regex on the attachment name in the data source", "notes": "" }
   ],
-  "rami_bloccanti": [
-    { "condizione": "campo/valore che il flusso non gestisce", "azione": "stop, girare all'operatore" }
+  "blocking_branches": [
+    { "condition": "field/value the flow does not handle", "action": "stop, hand over to the operator" }
   ]
 }
 ```
 
-Niente dati personali qui dentro: solo nomi di campi, regole e regex. I valori veri
-viaggiano a runtime (memoria o `runtime/`, gitignorato, L-004).
+No personal data in here: only field names, rules, and regexes. Actual values travel
+at runtime (memory or `runtime/`, gitignored, L-004).

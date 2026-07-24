@@ -1,4 +1,0 @@
-{
-  "_readme": "Registro pratiche: lo stato di ogni pratica lavorata su ogni portale onboardato. La skill assistente-pratiche lo legge in apertura (quadro pratiche) e lo aggiorna ad ogni transizione. Ogni voce: cliente, identificativo, portale (id del plugin), flusso, stato, date, note. Stati base: preflight_ko | compilata (in attesa di ok) | inoltrata | chiusa; un portale puo' definire stati intermedi propri nella sua spec (docs/flow-<portale>-<flusso>.md). Niente dati oltre nome/identificativi pratica (gia' presenti nella fonte dati dell'azienda). Se non e' nel ledger, non e' successo.",
-  "pratiche": []
-}

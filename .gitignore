@@ -7,23 +7,21 @@
 credentials.json
 tokens/
 
-# Dati personali clienti: record e allegati scaricati dalla fonte dati, catture, mai nel repo (L-004)
+# Client personal data: records and attachments fetched from the data source,
+# captures. Never in the repo (L-004)
 runtime/
 tmp/
 downloads/
 *.pdf
 *.p7m
-# Eccezione: PDF di sola documentazione
+# Exception: documentation-only PDFs
 !docs/**/*.pdf
 
-# Immagini di firma (asset sensibili): mai nel repo
+# Signature images (sensitive assets): never in the repo
 signatures/
 assets/signatures/
-*firma*.png
-*firma*.jpg
-*firma*.jpeg
 
-# Python (eventuali venv di skill)
+# Python (possible skill venvs)
 __pycache__/
 *.py[cod]
 .venv/
@@ -39,13 +37,13 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# Runtime / log
+# Runtime / logs
 logs/
 *.log
 runs/
 
-# Output di cattura browser (screenshot/snapshot/html: dati reali)
+# Browser capture output (screenshots/snapshots/html: real data)
 .playwright-mcp/
 
-# Config locale di Claude Code (permessi macchina-specifici)
+# Local Claude Code config (machine-specific permissions)
 .claude/settings.local.json

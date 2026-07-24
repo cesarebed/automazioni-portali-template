@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// Estrazione di un record dalla fonte dati (serve un adapter configurato, vedi skill
-// onboarding-crm). Usato in onboarding portale per scaricare il record COMPLETO e
-// proporre le mappature, e in diagnosi per vedere cosa c'e' davvero nel gestionale.
+// Fetches one record from the data source (requires a configured adapter, see the
+// crm-onboarding skill). Used during portal onboarding to download the FULL record
+// and propose mappings, and during diagnosis to see what is actually in the system.
 //
-//   node scripts/bot/tools/fetch-record.js "Mario Rossi"
-//   node scripts/bot/tools/fetch-record.js "<identificativo>" --allegati
-//   node scripts/bot/tools/fetch-record.js "Mario Rossi" --out
+//   node scripts/bot/tools/fetch-record.js "John Smith"
+//   node scripts/bot/tools/fetch-record.js "<identifier>" --attachments
+//   node scripts/bot/tools/fetch-record.js "John Smith" --out
 //
-// Di default stampa a video i campi NON vuoti. --allegati elenca gli allegati.
-// --out salva il record completo in runtime/fetch/<id>.json (gitignorato, L-004:
-// da cancellare a lavoro finito). Mai committare questi dati.
+// By default it prints the non-empty fields. --attachments lists the attachments.
+// --out saves the full record to runtime/fetch/<id>.json (gitignored, L-004: delete
+// it when done). Never commit this data.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -19,7 +19,7 @@ import { getCrm } from "../lib/crm/index.js";
 const args = process.argv.slice(2);
 const identifier = args.find((a) => !a.startsWith("--"));
 if (!identifier) {
-  console.error('Uso: node scripts/bot/tools/fetch-record.js "<nome | identificativo>" [--allegati] [--out]');
+  console.error('Usage: node scripts/bot/tools/fetch-record.js "<name | identifier>" [--attachments] [--out]');
   process.exit(1);
 }
 
@@ -30,32 +30,32 @@ try {
   console.error(e.message);
   process.exit(1);
 }
-const trovati = await crm.findRecord(identifier);
-if (trovati.length === 0) {
-  console.error(`Nessun record trovato per "${identifier}".`);
+const found = await crm.findRecord(identifier);
+if (found.length === 0) {
+  console.error(`No record found for "${identifier}".`);
   process.exit(2);
 }
-if (trovati.length > 1) {
-  console.error(`Piu' record trovati: ${trovati.map((t) => t.label).join("; ")}`);
-  console.error("Disambigua con un identificativo esatto. Uso il primo.");
+if (found.length > 1) {
+  console.error(`Multiple records found: ${found.map((t) => t.label).join("; ")}`);
+  console.error("Disambiguate with an exact identifier. Using the first one.");
 }
-const { id, label } = trovati[0];
+const { id, label } = found[0];
 console.log(`Record: ${label} (${id})\n`);
 
 const record = await crm.fetchRecordFull(id);
-const pieni = Object.entries(record).filter(
+const filled = Object.entries(record).filter(
   ([, v]) => v !== null && v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0)
 );
-console.log(`Campi non vuoti (${pieni.length}):`);
-for (const [k, v] of pieni) {
+console.log(`Non-empty fields (${filled.length}):`);
+for (const [k, v] of filled) {
   const s = typeof v === "object" ? JSON.stringify(v) : String(v);
   console.log(`  ${k} = ${s.length > 120 ? s.slice(0, 120) + "..." : s}`);
 }
 
-if (args.includes("--allegati")) {
+if (args.includes("--attachments")) {
   const atts = await crm.listAttachments(id);
-  console.log(`\nAllegati (${atts.length}):`);
-  for (const a of atts) console.log(`  ${a.nome} (${a.size ?? "?"} byte, id ${a.id})`);
+  console.log(`\nAttachments (${atts.length}):`);
+  for (const a of atts) console.log(`  ${a.name} (${a.size ?? "?"} bytes, id ${a.id})`);
 }
 
 if (args.includes("--out")) {
@@ -63,5 +63,5 @@ if (args.includes("--out")) {
   mkdirSync(dir, { recursive: true });
   const path = join(dir, `${id}.json`);
   writeFileSync(path, JSON.stringify(record, null, 2));
-  console.log(`\nRecord completo salvato in ${path} (gitignorato; cancellare a lavoro finito).`);
+  console.log(`\nFull record saved to ${path} (gitignored; delete when done).`);
 }

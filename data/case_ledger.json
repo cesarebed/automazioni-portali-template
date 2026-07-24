@@ -1,0 +1,4 @@
+{
+  "_readme": "Case ledger: the state of every case worked on every onboarded portal. The case-assistant skill reads it at session start (case overview) and updates it on every transition. Each entry: client, identifier, portal (plugin id), flow, state, dates, notes. Base states: preflight_failed | filled (awaiting approval) | submitted | closed; a portal may define its own intermediate states in its spec (docs/flow-<portal>-<flow>.md). Nothing beyond names and case identifiers (already present in the company's data source). If it is not in the ledger, it did not happen.",
+  "cases": []
+}
